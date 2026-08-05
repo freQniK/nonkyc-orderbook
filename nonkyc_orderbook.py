@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 import requests
 
@@ -175,7 +175,8 @@ def render(base, quote, symbol, book, market_info, depth, refresh):
 
     # ── header ────────────────────────────────────────────────────────────────
     title = f"NonKYC Order Book — {base}/{quote} ({symbol})"
-    ts    = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+    # use timezone-aware UTC datetime (avoid deprecated utcnow)
+    ts    = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
     if refresh:
         ts += f"  •  refresh {refresh}s  •  Ctrl+C to exit"
 
