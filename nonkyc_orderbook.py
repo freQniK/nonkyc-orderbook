@@ -66,7 +66,7 @@ PRICE_W  = 14
 QTY_W    = 14
 TOTAL_W  = 14
 CQTY_W   = 16   # cumulative qty
-CTOTAL_W = 18   # cumulative total (USD)
+CTOTAL_W = 16   # cumulative total (USD)
 CAVG_W   = 14   # cumulative avg price
 
 # one full side = all columns + spaces between them
@@ -77,7 +77,7 @@ SIDE_W = (
     + TOTAL_W + 1
     + CQTY_W + 1
     + CTOTAL_W + 1
-    + CAVG_W
+    + CAVG_W + 4
 )
 
 SEP    = " | "
@@ -135,17 +135,17 @@ def format_row(i, price, qty, cum_qty, cum_total, cum_avg, side):
         f"{c(f'{fmt(cum_avg):>{CAVG_W}}', DIM + cum_col)}"
     )
 
-def header_row():
+def header_row(quote):
     """Return the plain header string (no ANSI)."""
     return (
         f"{'#':>{IDX_W}} "
         f"{'Price':>{PRICE_W}} "
         f"{'Qty':>{QTY_W}} "
-        f"{'Total':>{TOTAL_W}} "
-        f"{'Cum Qty':>{CQTY_W}} "
-        f"{'Cum Total':>{CTOTAL_W}} "
-        f"{'Cum Avg':>{CAVG_W}}"
-    )
+        f"{'Total (%s)':>{TOTAL_W}} " 
+        f"{'Cum Qty':>{CQTY_W -3}} "
+        f"{'Cum Total (%s)':>{CTOTAL_W+2}} " 
+        f"{'Cum Avg':>{CAVG_W-3}}"
+    ) % (quote, quote)
 
 def render(base, quote, symbol, book, market_info, depth, refresh):
     bids = build_levels(book.get("bids", []))
@@ -206,7 +206,7 @@ def render(base, quote, symbol, book, market_info, depth, refresh):
     print(f"  Spread     : {fmt(spread)} {quote}  ({spread_pct:.4f}%)")
 
     # ── column headers ────────────────────────────────────────────────────────
-    hdr = header_row()
+    hdr = header_row(quote)
 
     print("\n" + c("-" * FULL_W, CYAN))
     print(
