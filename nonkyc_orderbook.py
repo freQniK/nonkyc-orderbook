@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import shutil
 import sys
 import time
 from datetime import datetime, timezone
@@ -30,6 +31,13 @@ def c(text, color):
 def clear():
     sys.stdout.write("\033[2J\033[H")
     sys.stdout.flush()
+
+def term_width():
+    """Best-effort terminal width; falls back to the order book width."""
+    try:
+        return shutil.get_terminal_size().columns
+    except Exception:
+        return FULL_W
 
 def fmt(x, d=8):
     try:
@@ -185,25 +193,60 @@ def render(base, quote, symbol, book, market_info, depth, refresh):
     print(c(ts.center(FULL_W), DIM))
     print(c("=" * FULL_W, CYAN))
 
-    # ── market info ───────────────────────────────────────────────────────────
+    # ── market info + snapshot (side by side) ─────────────────────────────────
     if market_info:
         last = float(market_info.get("lastPrice", 0) or 0)
         high = float(market_info.get("highPrice",  0) or 0)
         low  = float(market_info.get("lowPrice",   0) or 0)
         vol  = float(market_info.get("volume",     0) or 0)
+        quotevol = vol*last
 
-        print("\n" + c("24h Market Stats:", BOLD))
-        print(f"  Last Price : {c(fmt(last), CYAN)} {quote}")
-        print(f"  24h High   : {fmt(high)} {quote}")
-        print(f"  24h Low    : {fmt(low)} {quote}")
-        print(f"  24h Volume : {fmt(vol, 4)} {base}")
+        stats_plain = [
+            "24h Market Stats:",
+            f"  Last Price   : {fmt(last)} {quote}",
+            f"  24h High     : {fmt(high)} {quote}",
+            f"  24h Low      : {fmt(low)} {quote}",
+            f"  24h Volume   : {fmt(vol, 4)} {base}",
+            f"  Quote Volume : {fmt(quotevol, 0)} {quote}",
+        ]
+        stats_colored = [
+            c("24h Market Stats:", BOLD),
+            f"  Last Price   : {c(fmt(last), CYAN)} {quote}",
+            f"  24h High     : {fmt(high)} {quote}",
+            f"  24h Low      : {fmt(low)} {quote}",
+            f"  24h Volume   : {fmt(vol, 4)} {base}",
+            f"  Quote Volume : {c(fmt(quotevol, 0), GREEN)} {quote}"
+        ]
+    else:
+        stats_plain   = [""] * 5
+        stats_colored = [""] * 5
 
-    # ── snapshot ──────────────────────────────────────────────────────────────
-    print("\n" + c("Market Snapshot:", BOLD))
-    print(f"  Best Bid   : {c(fmt(best_bid), GREEN)} {quote}")
-    print(f"  Best Ask   : {c(fmt(best_ask), RED)} {quote}")
-    print(f"  Mid Price  : {fmt(mid)} {quote}")
-    print(f"  Spread     : {fmt(spread)} {quote}  ({spread_pct:.4f}%)")
+    snap_plain = [
+        "Market Snapshot:",
+        f"  Best Bid   : {fmt(best_bid)} {quote}",
+        f"  Best Ask   : {fmt(best_ask)} {quote}",
+        f"  Mid Price  : {fmt(mid)} {quote}",
+        f"  Spread     : {fmt(spread)} {quote}  ({spread_pct:.4f}%)",
+        f" "
+    ]
+    snap_colored = [
+        c("Market Snapshot:", BOLD),
+        f"  Best Bid   : {c(fmt(best_bid), GREEN)} {quote}",
+        f"  Best Ask   : {c(fmt(best_ask), RED)} {quote}",
+        f"  Mid Price  : {fmt(mid)} {quote}",
+        f"  Spread     : {fmt(spread)} {quote}  ({spread_pct:.4f}%)",
+        f" "
+    ]
+
+    # right-align the snapshot block to the terminal edge, keeping a gap
+    left_w  = max(len(p) for p in stats_plain)
+    right_w = max(len(p) for p in snap_plain)
+    gap     = 4
+    start   = max(left_w + gap, term_width() - right_w)
+
+    print()
+    for lp, lc, rp, rc in zip(stats_plain, stats_colored, snap_plain, snap_colored):
+        print(lc + " " * max(1, start - len(lp)) + rc)
 
     # ── column headers ────────────────────────────────────────────────────────
     hdr = header_row(quote)
